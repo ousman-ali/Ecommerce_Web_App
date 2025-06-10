@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import styled from 'styled-components'
 import Navbar from '../components/Navbar';
 import Announcement from '../components/Announcement';
@@ -6,6 +6,11 @@ import NewsLetter from '../components/NewsLetter';
 import Footer from '../components/Footer';
 import { Add, Remove } from '@mui/icons-material';
 import { mobile } from '../responsive';
+import { useLocation } from 'react-router-dom';
+import axios from 'axios';
+import { publicRequest } from '../responseMethods';
+import { addProduct } from '../redux/cartRedux';
+import { useDispatch } from 'react-redux';
 
 const Container = styled.div``;
 
@@ -111,48 +116,76 @@ const Button = styled.button`
 `;
 
 const Product = () => {
+        const location = useLocation();
+        const id = location.pathname.split("/")[2];
+        const [product, setProduct] = useState({});
+        const [quantity, setQuantity] = useState(1);
+        const [color, setColor] = useState("");
+        const [size, setSize] = useState("");
+        const dispatch = useDispatch();
+
+        useEffect(()=>{
+                const getProducts = async ()=>{
+                        try {
+                            const res = await publicRequest.get(`/products/find/${id}`);
+                            setProduct(res.data);   
+                        } catch (error) {
+                              console.log(error);  
+                        }
+                }
+                getProducts();
+        }, [id])
+
+        const handleQuantity = (name) => {
+                if (name === "remove") {
+                        // Ensure quantity doesn't go below 0
+                        setQuantity(prevQuantity => Math.max(prevQuantity - 1, 0));
+                } else if(name === "add"){
+                        // Increment the quantity
+                        setQuantity(prevQuantity => prevQuantity + 1);
+                }
+        };
+
+        const handleClick =()=>{
+                //update our cart
+                dispatch(addProduct({ ...product, quantity, color, size }))
+        };
+
   return (
     <Container>
         <Navbar/>
         <Announcement/>
             <Wrapper>
                 <ImageContainer>
-                    <Image src="https://d3o2e4jr3mxnm3.cloudfront.net/Mens-Jake-Guitar-Vintage-Crusher-Tee_68382_1_lg.png" />
+                    <Image src={product.img} />
                 </ImageContainer>
                 <InfoContainer>
-                    <Title>Ousman Ali</Title>
-                    <Desc>Lorem ipsum dolor sit amet consectetur adipisicing elit. 
-                        Libero architecto, quisquam sapiente vitae autem assumenda 
-                        consectetur aliquid exercitationem omnis dolore aliquam rerum 
-                        dolor illum molestias eligendi odio cumque! Quaerat, quod?
-                    </Desc>
-                    <Price>$ 20</Price>
+                    <Title>{product.title}</Title>
+                    <Desc>{product.desc}</Desc>
+                    <Price>$ {product.price}</Price>
                     <FilterContainer>
                         <Filter>
                             <FilterTitle>Color</FilterTitle>
-                            <FilterColor color= "black"/>
-                            <FilterColor color= "darkblue"/>
-                            <FilterColor color= "gray"/>
+                            {product.color?.map(c=>(
+                                <FilterColor color= {c} key={c} onClick={()=>setColor(c)}/>
+                            ))}
                         </Filter>
                         <Filter>
                             <FilterTitle>Size</FilterTitle>
-                            <FilterSize>
-                                <FilterSizeOption>XS</FilterSizeOption>
-                                <FilterSizeOption>S</FilterSizeOption>
-                                <FilterSizeOption>M</FilterSizeOption>
-                                <FilterSizeOption>L</FilterSizeOption>
-                                <FilterSizeOption>XL</FilterSizeOption>
-                                <FilterSizeOption>XXL</FilterSizeOption>
+                            <FilterSize onChange={(e)=>setSize(e.target.value)}>
+                                {product.size?.map(s=>(
+                                        <FilterSizeOption key={s}>{s}</FilterSizeOption>
+                                ))}
                             </FilterSize>
                         </Filter>
                     </FilterContainer>
                     <AddContainer>
                         <AmountContainer>
-                            <Remove/>
-                            <Amount>1</Amount>
-                            <Add/>
+                            <Remove onClick={()=>handleQuantity("remove")}/>
+                            <Amount>{quantity}</Amount>
+                            <Add onClick={()=>handleQuantity("add")}/>
                         </AmountContainer>
-                        <Button>ADD TO CART</Button>
+                        <Button onClick={handleClick}>ADD TO CART</Button>
                     </AddContainer>
                 </InfoContainer>
             </Wrapper>
